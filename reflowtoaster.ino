@@ -24,6 +24,11 @@
 #define PIN_THERMO_CS   5
 #define PIN_THERMO_CLK    6
 
+#define LCD_LINES    16
+#define LCD_ROWS    2
+
+ 
+
 MAX6675 thermocouple(PIN_THERMO_CLK, PIN_THERMO_CS, PIN_THERMO_DO);
 
 
@@ -53,6 +58,7 @@ pre HEAT
 
 
 */
+bool haserror = false;
 
 double arrayprofile_Time[6] = { 0, 30, 120, 150, 210, 240 };
 double  arrayprofile_TempTargate[6] = { 25, 100, 150, 183, 235, 0 };
@@ -83,7 +89,7 @@ void setup() {
 	pinMode(PIN_THERMO_GND, OUTPUT);
 	digitalWrite(PIN_THERMO_GND, LOW);
 
-	lcd.begin(16, 2);
+	lcd.begin(LCD_LINES, LCD_ROWS);
 	//  lcd.createChar(0, degree);
 
 	// wait for MAX chip to stabilize
@@ -91,11 +97,40 @@ void setup() {
 	lcd.clear();
 	lcd.print(F("OFF     "));
 	lcd.print(F("Reflow Toster  1.0"));
+
 	delay(1000);
-	pinMode(PIN_BUZER, OUTPUT);
+	// do checks for errors ..
+	if ((digitalRead(PIN_START_BUTTON) == LOW) || (digitalRead(PIN_STOP_BUTTON) == LOW)){
+	 	 
+		digitalWrite(PIN_BUZER, HIGH);
+		lcd.setCursor(0, 0);
+		lcd.print(F("BUTTON ERROR "));
+		haserror = true;
+			 
+		return;
+
+
+	}
+	// temp test ...
+	if (thermocouple.readCelsius() < 10  ){
+
+		digitalWrite(PIN_BUZER, HIGH);
+		lcd.setCursor(0, 0);
+		lcd.print(F("TEMP ERROR "));
+		haserror = true;
+
+		return;
+
+
+	}
+
+	lcd.clear();
+	lcd.print(F("OFF     "));
 	digitalWrite(PIN_BUZER, HIGH);
 	delay(500);
 	digitalWrite(PIN_BUZER, LOW);
+ 
+
 
 }
 void heaterandshow(int offon){
@@ -169,6 +204,10 @@ void setheater(unsigned long   lcurenttime, double lcurrent_temp){
 }
 
 void loop() {
+
+
+	if (haserror) return;
+
 	unsigned long   curenttime = millis();
 	double  cur_temp = last_temp_check;
 
